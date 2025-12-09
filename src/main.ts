@@ -26,7 +26,7 @@ async function bootstrap() {
     }),
   );
 
-  await app.listen(port);
+  await app.listen(process.env.PORT || 3000, '0.0.0.0');
   console.log(`✅✅ Application is running on: http://localhost:${port}`);
   console.log(`✅✅ Google OAuth: http://localhost:${port}/auth/google`);
 }
