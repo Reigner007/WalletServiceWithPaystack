@@ -1,0 +1,98 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  googleId      String   @unique
+  name          String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  wallet        Wallet?
+  apiKeys       ApiKey[]
+  sentTransfers Transaction[] @relation("SenderTransactions")
+  receivedTransfers Transaction[] @relation("ReceiverTransactions")
+
+  @@map("users")
+}
+
+model Wallet {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  walletNumber  String   @unique
+  balance       Decimal  @default(0) @db.Decimal(15, 2)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions  Transaction[]
+
+  @@map("wallets")
+}
+
+model ApiKey {
+  id          String   @id @default(uuid())
+  userId      String
+  name        String
+  key         String   @unique
+  permissions String[] // ["deposit", "transfer", "read"]
+  expiresAt   DateTime
+  isRevoked   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("api_keys")
+}
+
+model Transaction {
+  id              String   @id @default(uuid())
+  walletId        String
+  type            TransactionType
+  amount          Decimal  @db.Decimal(15, 2)
+  status          TransactionStatus @default(PENDING)
+  reference       String?  @unique
+  description     String?
+  
+  // For transfers
+  senderId        String?
+  receiverId      String?
+  recipientWalletNumber String?
+  
+  // Paystack fields
+  paystackRef     String?
+  authorizationUrl String?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  wallet          Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  sender          User?    @relation("SenderTransactions", fields: [senderId], references: [id])
+  receiver        User?    @relation("ReceiverTransactions", fields: [receiverId], references: [id])
+
+  @@index([reference])
+  @@index([walletId])
+  @@map("transactions")
+}
+
+enum TransactionType {
+  DEPOSIT
+  TRANSFER_IN
+  TRANSFER_OUT
+}
+
+enum TransactionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
