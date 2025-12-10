@@ -65,7 +65,7 @@ async function bootstrap() {
     customCss: '.swagger-ui .topbar { display: none }',
   });
 
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
   console.log(`✅ Application is running on: http://localhost:${port}`);
   console.log(`📚 Swagger documentation: http://localhost:${port}/api/docs`);
   console.log(`📝 Google OAuth: http://localhost:${port}/auth/google`);
