@@ -58,14 +58,19 @@ export class WalletService {
   }
 
   async handleWebhook(event: any) {
+    console.log('🔔 Processing webhook event');
+
     const { event: eventType, data } = event;
 
     if (eventType !== 'charge.success') {
+      console.log('⏭️  Ignoring event type:', eventType);
       return { status: true };
     }
 
     const reference = data.reference;
     const amount = data.amount / 100; // Convert from kobo to naira
+
+    console.log('💰 Processing payment for reference:', reference);
 
     // Find transaction
     const transaction = await this.prisma.transaction.findUnique({
@@ -74,15 +79,19 @@ export class WalletService {
     });
 
     if (!transaction) {
+      console.error('❌ Transaction not found:', reference);
       throw new NotFoundException('Transaction not found');
     }
 
     // Check if already processed (idempotency)
     if (transaction.status === 'SUCCESS') {
+      console.log('✅ Transaction already processed:', reference);
       return { status: true };
     }
 
-    // Update transaction and wallet balance in a transaction
+    console.log('🔄 Updating transaction and crediting wallet...');
+
+    // Update transaction and wallet balance in a transaction (atomic)
     await this.prisma.$transaction(async (tx) => {
       // Update transaction status
       await tx.transaction.update({
@@ -100,6 +109,8 @@ export class WalletService {
         },
       });
     });
+
+    console.log('✅ Wallet credited successfully:', reference);
 
     return { status: true };
   }
@@ -164,7 +175,7 @@ export class WalletService {
       throw new BadRequestException('Cannot transfer to your own wallet');
     }
 
-    // Perform transfer in a transaction
+    // Perform transfer in a transaction (atomic)
     await this.prisma.$transaction(async (tx) => {
       // Deduct from sender
       await tx.wallet.update({

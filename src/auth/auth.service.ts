@@ -1,3 +1,4 @@
+// ==================== src/auth/auth.service.ts ====================
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
@@ -15,6 +16,7 @@ export class AuthService {
 
     let user = await this.prisma.user.findUnique({
       where: { googleId: id },
+      include: { wallet: true },
     });
 
     if (!user) {
@@ -29,7 +31,7 @@ export class AuthService {
 
         const walletNumber = this.generateWalletNumber();
 
-        await tx.wallet.create({
+        const wallet = await tx.wallet.create({
           data: {
             userId: newUser.id,
             walletNumber,
@@ -37,7 +39,10 @@ export class AuthService {
           },
         });
 
-        return newUser;
+        return {
+          ...newUser,
+          wallet,
+        };
       });
     }
 

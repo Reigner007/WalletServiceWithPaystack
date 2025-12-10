@@ -7,7 +7,6 @@ import {
   Req,
   UseGuards,
   Headers,
-  RawBodyRequest,
   BadRequestException,
 } from '@nestjs/common';
 import { WalletService } from './wallet.service';
@@ -32,17 +31,26 @@ export class WalletController {
 
   @Post('paystack/webhook')
   async handleWebhook(
-    @Req() req: RawBodyRequest<Request>,
     @Headers('x-paystack-signature') signature: string,
     @Body() body: any,
   ) {
+    console.log('🔔 Webhook received from Paystack');
+    
+    // Verify webhook signature
     const rawBody = JSON.stringify(body);
+    
+    if (!signature) {
+      throw new BadRequestException('Missing webhook signature');
+    }
+
     const isValid = this.paystackService.verifyWebhookSignature(rawBody, signature);
 
     if (!isValid) {
+      console.error('❌ Invalid webhook signature');
       throw new BadRequestException('Invalid webhook signature');
     }
 
+    console.log('✅ Webhook signature verified');
     return this.walletService.handleWebhook(body);
   }
 
